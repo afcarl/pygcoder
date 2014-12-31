@@ -1,0 +1,10 @@
+svg curve to line segments/arcs with some tolerance
+
+use svg.path library for this (curve.point)
+
+- take a curve/bezier
+- try to fit it with a line/arc
+- subdivide it and check if error > tolerance
+- error < tolerance, return
+- error > tolerance, subdivide sub-paths (recurse)
+- check if minimum arc length is reached (too many subdivisions)
