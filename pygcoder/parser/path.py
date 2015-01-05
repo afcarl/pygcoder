@@ -87,8 +87,32 @@ def from_svg(element):
     return transform_path(path, ts)
 
 
-def center(path, min_points=100, max_error=0.0001):
-    pass
+def center(path, points_step=10, min_points=100, max_error=0.009,
+           max_points=1000):
+    error = max_error + 1
+    n = float(min_points)
+    center = None
+    # TODO check if start and end are the same
+    while error > max_error:
+        if n > max_points:
+            raise Exception("center: too many points")
+        # evaluate path at n points
+        if center is None:
+            # find center,
+            center = sum([path.point(i / n) for i in xrange(int(n))])
+            center = (center.real / n + center.imag / n * 1j)
+        # evaluate at n + points_step points
+        hrn = n + points_step
+        hr = sum([path.point(i / hrn) for i in xrange(int(hrn))])
+        hr = (hr.real / hrn + hr.imag / hrn * 1j)
+        # measure error
+        diff = hr - center
+        error = abs(diff.real) + abs(diff.imag)
+        print n, error, center
+        n += points_step
+        center = hr
+    # return center evaluated at n
+    return center.real, center.imag
 
 
 def offset(path, radius):

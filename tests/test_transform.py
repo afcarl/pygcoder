@@ -27,6 +27,8 @@ for path in paths:
         if 'transform' in parent.attrib:
             del parent.attrib['transform']
         parent = parent.getparent()
+    # print out center of path
+    pygcoder.parser.path.center(tpath)
 
 # save as flattened.svg
 xml.write('modified.svg')
