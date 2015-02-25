@@ -59,6 +59,7 @@ def transform_path(path, transforms):
             ce.radius = transform_radius(t, e.radius)
             # how to transform rotation?? ce.rotation
             ce.rotation = transform_rotation(t, e.rotation)
+            ce._parameterize()
         else:
             raise Exception("Unknown type: %s" % type(e))
         new_path.append(ce)
@@ -108,7 +109,7 @@ def center(path, points_step=10, min_points=100, max_error=0.009,
         # measure error
         diff = hr - center
         error = abs(diff.real) + abs(diff.imag)
-        print n, error, center
+        #print n, error, center
         n += points_step
         center = hr
     # return center evaluated at n
