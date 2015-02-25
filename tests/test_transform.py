@@ -28,7 +28,8 @@ for path in paths:
             del parent.attrib['transform']
         parent = parent.getparent()
     # print out center of path
-    pygcoder.parser.path.center(tpath)
+    cx, cy = pygcoder.parser.path.center(tpath)
+    print cx, 1052.36 - cy
 
 # save as flattened.svg
 xml.write('modified.svg')
