@@ -116,9 +116,21 @@ def center(path, points_step=10, min_points=100, max_error=0.009,
     return center.real, center.imag
 
 
-def offset(path, radius):
-    # get offset code from here:
+def ratios(path):
+    pass
+
+
+def normals(paths):
+    pass
+
+
+def offset_path(path, radius):
+    # get bezier offset code from here:
     # https://github.com/Pomax/bezierinfo/blob/gh-pages/framework/BezierCurve.pde
+    for p in path:
+        offset_point
+    # calculate point normals
+    # calculate ratios [normalized length]
     pass
 
 

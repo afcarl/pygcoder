@@ -15,6 +15,8 @@ Currently working
 - work towards offsetting (see tests/test_split.py)
 
 Needs
+- test bezier offset
+- get offset for lines & arcs
 - get offset working (for kerf correction)
 - get conversion from curves to lines working (for gcode generation)
 - get clockwise/counterclockwise path rotation working (for cutter correction)
