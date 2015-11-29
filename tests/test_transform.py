@@ -30,7 +30,7 @@ for path in paths:
         parent = parent.getparent()
     # print out center of path
     cx, cy = pygcoder.parser.path.center(tpath)
-    print cx, 1052.36 - cy
+    # print cx, 1052.36 - cy
     tpaths.append(tpath)
 
 # save as flattened.svg

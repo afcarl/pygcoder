@@ -33,10 +33,10 @@ def transform_path(path, transforms):
     if len(transforms) == 0:
         return path
     t = transform.resolve(*transforms)
-    # TODO
     # apply transforms to path
     new_path = svg.path.Path()
     for e in path:
+        print e
         ce = copy.copy(e)
         # monkey patch class
         ce.tpoint = lambda v, t=t, self=ce: transform_point(t, self.point(v))
@@ -63,6 +63,7 @@ def transform_path(path, transforms):
         else:
             raise Exception("Unknown type: %s" % type(e))
         new_path.append(ce)
+        print ce
     # return modified path
     return new_path
 

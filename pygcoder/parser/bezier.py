@@ -50,6 +50,25 @@ def binomial(n, k):
         return 0
 
 
+def get_1st_derivative(t, curve):
+    # only for cubic (order 3)
+    p0 = curve.start
+    p1 = curve.control1
+    p2 = curve.control2
+    p3 = curve.end
+    return (
+        3 * (1 - t) ** 2 * (p1 - p0) +
+        6 * (1 - t) * (p2 - p1) +
+        3 * t ** 2 * (p3 - p2))
+    mt = 1. - t
+    a = mt * mt
+    b = mt * t * 2
+    c = t * t
+    n = len(values) - 1
+    dpts = [n * (values[i+1] - values[i]) for i in xrange(n)]
+    return a * dpts[0] + b * dpts[1] + c * dpts[2]
+
+
 def get_derivative(derivative, t, values):
     n = len(values) - 1
     if n == 0:
@@ -202,13 +221,6 @@ def get_slices(curve):
     return slices
 
 
-def compute_cache(curve):
-    points = [curve.start, curve.control1, curve.control2, curve.end]
-    xs = [p.real for p in points]
-    ys = [p.imag for p in points]
-    # TODO
-
-
 def project_point(point, curve, precision=0.0001):
     mindist = float('inf')
     mint = -1
@@ -252,11 +264,18 @@ def ratios(curve):
 
 
 def compute_normal(t, curve):
-    pts = [curve.start, curve.control1, curve.control2, curve.end]
-    xs = [p.real for p in pts]
-    ys = [p.imag for p in pts]
-    dx = get_derivative(1, t, xs)
-    dy = get_derivative(1, t, ys)
+    #pts = [curve.start, curve.control1, curve.control2, curve.end]
+    #xs = [p.real for p in pts]
+    #ys = [p.imag for p in pts]
+    #dx = get_1st_derivative(t, xs)
+    #dy = get_1st_derivative(t, ys)
+    #dx = get_1st_derivative(t, xs)
+    #dy = get_1st_derivative(t, ys)
+    #dx = get_derivative(1, t, xs)
+    #dy = get_derivative(1, t, ys)
+    d = get_1st_derivative(t, curve)
+    dx = d.real
+    dy = d.imag
     a = -math.pi/2.
     ca = math.cos(a)
     sa = math.sin(a)
@@ -296,3 +315,79 @@ def offset(curve, distance):
     # TODO 'pull' together slices
     # return array of slices
     return slices
+
+
+def offset_curve(curve, distance):
+    # split at points (to generate control points)
+    slices = get_slices(curve)
+    oslices = [simple_offset(s, distance) for s in get_slices(curve)]
+    # get inflection points
+    ipts = []
+    for s in slices:
+        ipts.append(s.start)
+    ipts.append(s.end)
+    # offset inflection points by curve normal
+    opts = []
+    for ipt in ipts:
+        i = project_point(ipt, curve)
+        n = compute_normal(i, curve)
+        opts.append(ipt + distance * n)
+    # copy over offset points to splits
+    # ns = len(slices)
+    # ni = len(ipts)
+    # ns = ni - 1
+    for i in xrange(len(oslices)):
+        oslices[i].start = opts[i]
+        oslices[i].end = opts[i+1]
+    return oslices
+
+
+def to_arc(curve, start=0., end=1.):
+    # break up a bezier curve into arcs (and lines)
+    # start with points [0, 0.5, 1.], check error, repeat
+    midpoint = float(end + start) / 2.
+    p0 = curve.point(start)
+    p1 = curve.point(midpoint)
+    p2 = curve.point(end)
+    m0 = -(p1.real - p0.real) / (p1.imag - p0.imag)
+    m1 = -(p2.real - p1.real) / (p2.imag - p1.imag)
+    c0 = (p1 + p0) / 2.
+    c1 = (p2 + p1) / 2.
+    b0 = c0.imag - m0 * c0.real
+    b1 = c1.imag - m1 * c1.real
+    xi = (b1 - b0) / (m0 - m1)
+    yi = m0 * xi + b0
+    c = complex(xi, yi)
+    r = abs(p0 - c)
+    #r = ((p0.real - xi) ** 2. + (p0.imag - yi) ** 2.) ** 0.5
+    t0 = curve.point((start + midpoint) / 2.)
+    t1 = curve.point((midpoint + end) / 2.)
+    d0 = abs(abs(t0 - c) - r)
+    d1 = abs(abs(t1 - c) - r)
+    return p0, p2, xi, yi, r, d0, d1
+
+
+def split_into_arcs(curve, threshold=0.0001, start=0., end=1.):
+    mp = (start + end) / 2.
+    arcs = []
+    a0 = to_arc(curve, start, mp)
+    a1 = to_arc(curve, mp, end)
+    if a0[5] < threshold and a0[6] < threshold:
+        arcs.append(a0)
+    else:
+        arcs += split_into_arcs(curve, threshold, start, mp)
+    if a1[5] < threshold and a1[6] < threshold:
+        arcs.append(a1)
+    else:
+        arcs += split_into_arcs(curve, threshold, mp, end)
+    return arcs
+
+
+def to_arcs(curve, threshold=0.0001, start=0., end=1.):
+    # convert r to ijk relative center for gcode
+    # keep as r for svg
+    # check against threshold and further subdivide if necessary
+    a = to_arc(curve, start, end)
+    if a[5] < threshold and a[6] < threshold:
+        return [a, ]
+    return split_into_arcs(curve, threshold, start, end)
