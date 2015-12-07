@@ -54,19 +54,27 @@ def get_1st_derivative(t, curve):
     # only for cubic (order 3)
     p0 = curve.start
     p1 = curve.control1
+    if p0 == p1 and t == 0.:
+        return get_1st_derivative(0.000001, curve)
+    p2 = curve.control2
+    p3 = curve.end
+    if p2 == p3 and t == 1.:
+        return get_1st_derivative(0.999999, curve)
+    return (
+        3 * (1 - t) ** 2 * (p1 - p0) +
+        6 * (1 - t) * t * (p2 - p1) +
+        3 * t ** 2 * (p3 - p2))
+
+
+def get_2nd_derivative(t, curve):
+    # only works for cubic (order 3)
+    p0 = curve.start
+    p1 = curve.control1
     p2 = curve.control2
     p3 = curve.end
     return (
-        3 * (1 - t) ** 2 * (p1 - p0) +
-        6 * (1 - t) * (p2 - p1) +
-        3 * t ** 2 * (p3 - p2))
-    mt = 1. - t
-    a = mt * mt
-    b = mt * t * 2
-    c = t * t
-    n = len(values) - 1
-    dpts = [n * (values[i+1] - values[i]) for i in xrange(n)]
-    return a * dpts[0] + b * dpts[1] + c * dpts[2]
+        6 * (1 - t) * (p2 - 2 * p1 + p0) +
+        6 * t * (p3 - 2 * p2 + p1))
 
 
 def get_derivative(derivative, t, values):
@@ -142,17 +150,17 @@ def get_inflections(curve, order=3):
     xs = [p.real for p in pts]
     ys = [p.imag for p in pts]
     for root in find_all_roots(1, xs):
-        if 0 < root and root < 1:
+        if 0 <= root and root <= 1:
             t_values.append(root)
     for root in find_all_roots(1, ys):
-        if 0 < root and root < 1:
+        if 0 <= root and root <= 1:
             t_values.append(root)
     if order > 2:
         for root in find_all_roots(2, xs):
-            if 0 < root and root < 1:
+            if 0 <= root and root <= 1:
                 t_values.append(root)
         for root in find_all_roots(2, ys):
-            if 0 < root and root < 1:
+            if 0 <= root and root <= 1:
                 t_values.append(root)
     ts = sorted(list(set(t_values)))
     if len(ts) > 2 * order + 2:
@@ -199,8 +207,23 @@ def split_curve(curve, t0, t1=None):
     return split_curve(split_curve(curve, t0)[1], t2)[0]
 
 
+def get_all_inflections(curve, l=0., r=1.):
+    pts = []
+    w = r - l
+    ipts = [(i * w) + l for i in get_inflections(align(curve))]
+    ipts = ipts[1:-1]  # remove 0 and 1
+    if len(ipts) > 3:
+        c0, c1 = split_curve(curve, 0.5)
+        pts.extend(get_all_inflections(c0, l, l + w * 0.5))
+        pts.extend(get_all_inflections(c1, l + w * 0.5, r))
+    else:
+        pts.extend(ipts)
+    return sorted(list(set(pts)))
+
+
 def add_slices(slices, curve):
-    ipts = get_inflections(align(curve))
+    #ipts = get_inflections(align(curve))
+    ipts = get_inflections(curve)
     if len(ipts) > 3:
         # further subdivide
         c0, c1 = split_curve(curve, 0.5)
@@ -213,7 +236,8 @@ def add_slices(slices, curve):
 
 def get_slices(curve):
     # align, get inflection points
-    ipts = get_inflections(align(curve))
+    #ipts = get_inflections(align(curve))
+    ipts = get_inflections(curve)
     # split curve at inflection points
     slices = []
     for i in xrange(len(ipts) - 1):
@@ -282,7 +306,7 @@ def compute_normal(t, curve):
     nx = dx * ca - dy * sa
     ny = dx * sa + dy * ca
     dst = math.sqrt(nx * nx + ny * ny)
-    return (nx / dst + ny / dst * 1j)
+    return complex(nx / dst, ny / dst)
 
 
 def normals(curve):
@@ -315,6 +339,25 @@ def offset(curve, distance):
     # TODO 'pull' together slices
     # return array of slices
     return slices
+
+
+def offset_curve2(curve, distance):
+    inds = get_all_inflections(curve)
+    inds.insert(0, 0.)
+    inds.append(1.)
+    print inds
+    opts = [curve.point(i) + distance * compute_normal(i, curve) for i in inds]
+    curves = []
+    for i in xrange(len(inds) - 1):
+        c = split_curve(curve, inds[i], inds[i+1])
+        c.start = opts[i]
+        c.end = opts[i+1]
+        n1 = compute_normal(project_point(c.control1, curve), curve)
+        n2 = compute_normal(project_point(c.control2, curve), curve)
+        c.control1 = c.control1 + distance * n1
+        c.control2 = c.control2 + distance * n2
+        curves.append(c)
+    return curves
 
 
 def offset_curve(curve, distance):
@@ -391,3 +434,10 @@ def to_arcs(curve, threshold=0.0001, start=0., end=1.):
     if a[5] < threshold and a[6] < threshold:
         return [a, ]
     return split_into_arcs(curve, threshold, start, end)
+
+
+def to_svg_arcs(curve, threshold=0.0001, start=0., end=1.):
+    arcs = to_arcs(curve, threshold, start, end)
+    return [
+        svg.path.Arc(a[0], complex(a[4], a[4]), 0., 0, 0, a[1])
+        for a in arcs]
