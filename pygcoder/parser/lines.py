@@ -3,6 +3,10 @@
 import svg.path
 
 
+class Line(svg.path.Line):
+    pass
+
+
 def offset(l, distance):
     d = abs(l.end - l.start)
     n0 = -(l.end.real - l.start.real)/(l.end.imag - l.start.imag)/d

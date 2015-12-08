@@ -72,6 +72,7 @@ def angle_in_range(angle, start, end, direction):
 
 
 class Arc(object):
+    # TODO make this compatible with svg.path
     def __init__(self, center, start, end, direction):
         """
         start: (complex) starting point of arc
@@ -90,16 +91,19 @@ class Arc(object):
         self.center = center
         self.start = start
         self.end = end
-        self.radius = abs(self.start - self.center)
         self.direction = direction
         self.validate()
+
+    @property
+    def radius(self):
+        return abs(self.start - self.center)
 
     def validate(self):
         assert isinstance(self.center, complex)
         assert isinstance(self.start, complex)
         assert isinstance(self.end, complex)
-        assert self.radius == abs(self.start - self.center)
-        assert self.radius == abs(self.end - self.center)
+        assert self.radius - abs(self.start - self.center) < default_err
+        assert self.radius - abs(self.end - self.center) < default_err
         assert self.direction in (0, 1)
 
     def to_angle(self, pt):
@@ -172,7 +176,7 @@ class Arc(object):
             return [p3a, p3b]
         a = (
             (self.radius * self.radius - arc.radius * arc.radius + d * d)
-            / 2 * d)
+            / (2 * d))
         p2 = self.center + a * (arc.center - self.center) / d
         if d == (self.radius + arc.radius):
             p3a = p2
@@ -220,6 +224,27 @@ def offset(arc, distance):
         c + n0 * nr, complex(nr, nr),
         arc.rotation, arc.arc, arc.sweep,
         c + n1 * nr)
+
+
+def from_svg_arc(arc):
+    if isinstance(arc, Arc):
+        return arc
+    # TODO use better way to find center
+    mp = arc.point(0.5)
+    c, _ = find_circle(arc.start, mp, arc.end)
+    # TODO why isn't direction 1 - sweep?
+    return Arc(c, arc.start, arc.end, arc.sweep)
+
+
+def to_svg_arc(arc):
+    if isinstance(arc, svg.path.Arc):
+        return arc
+    # TODO sort out sweep and arc flags
+    sweep = 1 - arc.direction
+    arc = 0
+    r = arc.radius
+    return svg.path.Arc(
+        arc.start, complex(r, r), 0., arc, sweep, arc.end)
 
 
 def to_lines(arc, threshold=0.0001):

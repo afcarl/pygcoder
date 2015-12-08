@@ -86,7 +86,8 @@ def from_svg(element):
     if len(ts) == 0:
         return path
     # transform path
-    return transform_path(path, ts)
+    tpath = transform_path(path, ts)
+    return convert_path(tpath)
 
 
 def center(path, points_step=10, min_points=100, max_error=0.009,
